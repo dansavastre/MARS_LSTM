@@ -27,6 +27,7 @@ from keras.layers import Flatten
 from keras.layers import Conv2D
 from keras.layers.normalization import BatchNormalization
 from keras.layers import Dropout
+from keras.layers import LSTM, Reshape
 
 # set the directory
 import os
@@ -68,8 +69,14 @@ def define_CNN(in_shape, n_keypoints):
 
 
     fe = Flatten()(conv_one_2)
+
+    # LSTM Layer
+    # Reshape the data from (batch_size, features) to (batch_size, timesteps, features)
+    reshape = Reshape((32, 64))(fe)
+    lstm_layer = LSTM(units=64, return_sequences=False)(reshape)
+
     # dense1
-    dense_layer1 = Dense(512, activation='relu')(fe)
+    dense_layer1 = Dense(512, activation='relu')(lstm_layer)
     dense_layer1 = BatchNormalization(momentum=0.95)(dense_layer1)
     # # dropout
 
@@ -94,8 +101,16 @@ def define_CNN(in_shape, n_keypoints):
 
 # Repeat i iteration to get the average result
 for i in range(10):
+    print('Iteration', i)
     # instantiate the model
     keypoint_model = define_CNN(featuremap_train[0].shape, 57)
+
+    # print the model summary
+    if i == 0:
+        keypoint_model.summary()
+        for layer in keypoint_model.layers:
+            print(layer.name, "output shape:", layer.output_shape)
+        
     # initial maximum error 
     score_min = 10
     history = keypoint_model.fit(featuremap_train, labels_train,
@@ -115,7 +130,7 @@ for i in range(10):
     plt.ylabel('Accuracy')
     plt.xlabel('Epoch')
     plt.legend(['Train', 'Xval'], loc='upper left')
-    plt.show()
+    # plt.show()
     
     # Plot loss
     plt.plot(history.history['loss'])
@@ -126,7 +141,7 @@ for i in range(10):
     plt.legend(['Train', 'Xval'], loc='upper left')
     plt.xlim([0,100])
     plt.ylim([0,0.1])
-    plt.show()
+    # plt.show()
     
     
 
@@ -179,7 +194,7 @@ for i in range(10):
 
     # save the best model so far
     if(score_test[1] < score_min):
-        keypoint_model.save(output_direct + 'MARS.h5')
+        keypoint_model.save(output_direct + 'MARS_LSTM.h5')
         score_min = score_test[1]
 
 
@@ -191,8 +206,10 @@ mean_paper_result_list = np.concatenate((np.mean(paper_result_list, axis = 0), m
 
 #Export the Accuracy
 output_path = output_direct + "Accuracy"
-output_filename = output_path + "/MARS_accuracy"
+output_filename = output_path + "/MARS_LSTM_accuracy"
 if not os.path.exists(output_path):
     os.makedirs(output_path)
 np.save(output_filename + ".npy", mean_paper_result_list)
 np.savetxt(output_filename + ".txt", mean_paper_result_list,fmt='%.2f')
+
+plt.show()
