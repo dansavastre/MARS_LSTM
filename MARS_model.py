@@ -21,6 +21,7 @@ from sklearn import metrics
 
 from keras.optimizers import Adam
 from keras.models import Model
+from keras.models import Sequential
 from keras.layers import Dense
 from keras.layers import Input
 from keras.layers import Flatten
@@ -95,7 +96,32 @@ def define_CNN(in_shape, n_keypoints):
     return model
 
 
-
+def define_LSTM_CNN(input_shape, n_keypoints):
+    model = Sequential()
+    
+    # CNN layer
+    model.add(Conv2D(filters=32, kernel_size=(3, 3), activation='relu', input_shape=input_shape))
+    
+    # Reshape output from CNN layer to fit LSTM layer
+    model.add(Flatten())
+    model.add(Dense(64 * 5))
+    model.add(Reshape((64, 5)))
+    
+    # LSTM layer
+    model.add(LSTM(units=64, return_sequences=False)) 
+    
+    # Fully connected layers
+    model.add(Dense(64, activation='relu'))
+    model.add(Dense(32, activation='relu'))
+    
+    # Output layer
+    model.add(Dense(n_keypoints, activation='linear'))
+    
+    # compile the model
+    opt = Adam(lr=0.001, beta_1=0.5)
+    model.compile(loss='mse', optimizer=opt, metrics=['mae', 'mse', 'mape', tf.keras.metrics.RootMeanSquaredError()])
+    
+    return model
 
 
 
@@ -103,7 +129,7 @@ def define_CNN(in_shape, n_keypoints):
 for i in range(10):
     print('Iteration', i)
     # instantiate the model
-    keypoint_model = define_CNN(featuremap_train[0].shape, 57)
+    keypoint_model = define_LSTM_CNN(featuremap_train[0].shape, 57)
 
     # print the model summary
     if i == 0:
