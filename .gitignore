@@ -1,1 +1,6 @@
-myenv/
+# Ignore python virtual environment
+myenv
+.venv
+
+# Ignore all files in the model folder (Output files from the model training process)
+model
