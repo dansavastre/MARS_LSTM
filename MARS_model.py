@@ -100,7 +100,9 @@ def define_LSTM_CNN(input_shape, n_keypoints):
     model = Sequential()
     
     # CNN layer
+    # model.add(Conv2D(filters=32, kernel_size=(3, 3), activation='relu', input_shape=input_shape))
     model.add(Conv2D(filters=32, kernel_size=(3, 3), activation='relu', input_shape=input_shape))
+    model.add(Dropout(0.3))
     
     # Reshape output from CNN layer to fit LSTM layer
     model.add(Flatten())
@@ -220,7 +222,7 @@ for i in range(10):
 
     # save the best model so far
     if(score_test[1] < score_min):
-        keypoint_model.save(output_direct + 'MARS_LSTM.h5')
+        keypoint_model.save(output_direct + 'MARS_LSTM_2.h5')
         score_min = score_test[1]
 
 
@@ -232,7 +234,7 @@ mean_paper_result_list = np.concatenate((np.mean(paper_result_list, axis = 0), m
 
 #Export the Accuracy
 output_path = output_direct + "Accuracy"
-output_filename = output_path + "/MARS_LSTM_accuracy"
+output_filename = output_path + "/MARS_LSTM_2_accuracy"
 if not os.path.exists(output_path):
     os.makedirs(output_path)
 np.save(output_filename + ".npy", mean_paper_result_list)
