@@ -19,14 +19,14 @@ import numpy as np
 import tensorflow as tf
 from sklearn import metrics
 
-from keras.optimizers import Adam
+from keras.optimizers import adam_v2
 from keras.models import Model
 from keras.models import Sequential
 from keras.layers import Dense
 from keras.layers import Input
 from keras.layers import Flatten
 from keras.layers import Conv2D
-from keras.layers.normalization import BatchNormalization
+from keras.layers import BatchNormalization
 from keras.layers import Dropout
 from keras.layers import LSTM, Reshape
 
@@ -89,7 +89,7 @@ def define_CNN(in_shape, n_keypoints):
 
     # model
     model = Model(in_one, out_layer)
-    opt = Adam(lr=0.001, beta_1=0.5)
+    opt = adam_v2.Adam(lr=0.001)
 
     # compile the model
     model.compile(loss='mse', optimizer=opt, metrics=['mae', 'mse', 'mape', tf.keras.metrics.RootMeanSquaredError()])
@@ -120,7 +120,7 @@ def define_LSTM_CNN(input_shape, n_keypoints):
     model.add(Dense(n_keypoints, activation='linear'))
     
     # compile the model
-    opt = Adam(lr=0.001, beta_1=0.5)
+    opt = adam_v2.Adam(lr=0.001)
     model.compile(loss='mse', optimizer=opt, metrics=['mae', 'mse', 'mape', tf.keras.metrics.RootMeanSquaredError()])
     
     return model
