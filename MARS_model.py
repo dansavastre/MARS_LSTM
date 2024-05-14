@@ -19,14 +19,14 @@ import numpy as np
 import tensorflow as tf
 from sklearn import metrics
 
-from keras.optimizers import Adam
+from keras.optimizers import adam_v2
 from keras.models import Model
 from keras.models import Sequential
 from keras.layers import Dense
 from keras.layers import Input
 from keras.layers import Flatten
 from keras.layers import Conv2D
-from keras.layers.normalization import BatchNormalization
+from keras.layers import BatchNormalization
 from keras.layers import Dropout
 from keras.layers import LSTM, Reshape
 
@@ -89,7 +89,7 @@ def define_CNN(in_shape, n_keypoints):
 
     # model
     model = Model(in_one, out_layer)
-    opt = Adam(lr=0.001, beta_1=0.5)
+    opt = adam_v2.Adam(lr=0.001)
 
     # compile the model
     model.compile(loss='mse', optimizer=opt, metrics=['mae', 'mse', 'mape', tf.keras.metrics.RootMeanSquaredError()])
@@ -100,7 +100,9 @@ def define_LSTM_CNN(input_shape, n_keypoints):
     model = Sequential()
     
     # CNN layer
+    # model.add(Conv2D(filters=32, kernel_size=(3, 3), activation='relu', input_shape=input_shape))
     model.add(Conv2D(filters=32, kernel_size=(3, 3), activation='relu', input_shape=input_shape))
+    model.add(Dropout(0.3))
     
     # Reshape output from CNN layer to fit LSTM layer
     model.add(Flatten())
@@ -118,7 +120,7 @@ def define_LSTM_CNN(input_shape, n_keypoints):
     model.add(Dense(n_keypoints, activation='linear'))
     
     # compile the model
-    opt = Adam(lr=0.001, beta_1=0.5)
+    opt = adam_v2.Adam(lr=0.001)
     model.compile(loss='mse', optimizer=opt, metrics=['mae', 'mse', 'mape', tf.keras.metrics.RootMeanSquaredError()])
     
     return model
@@ -220,7 +222,7 @@ for i in range(10):
 
     # save the best model so far
     if(score_test[1] < score_min):
-        keypoint_model.save(output_direct + 'MARS_LSTM.h5')
+        keypoint_model.save(output_direct + 'MARS_LSTM_2.h5')
         score_min = score_test[1]
 
 
@@ -232,7 +234,7 @@ mean_paper_result_list = np.concatenate((np.mean(paper_result_list, axis = 0), m
 
 #Export the Accuracy
 output_path = output_direct + "Accuracy"
-output_filename = output_path + "/MARS_LSTM_accuracy"
+output_filename = output_path + "/MARS_LSTM_2_accuracy"
 if not os.path.exists(output_path):
     os.makedirs(output_path)
 np.save(output_filename + ".npy", mean_paper_result_list)
