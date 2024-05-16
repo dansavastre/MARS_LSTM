@@ -8,3 +8,4 @@ model/Accuracy/
 
 # Ignore all slurm output files
 *.out
+*.log
