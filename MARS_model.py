@@ -94,10 +94,10 @@ for i in range(10):
     keypoint_model = define_LSTM_CNN(featuremap_train[0].shape, 57)
 
     # print the model summary
-    if i == 0:
-        keypoint_model.summary()
-        for layer in keypoint_model.layers:
-            print(layer.name, "output shape:", layer.output_shape)
+    # if i == 0:
+        # keypoint_model.summary()
+        # for layer in keypoint_model.layers:
+            # print(layer.name, "output shape:", layer.output_shape)
         
     # initial maximum error 
     score_min = 10
