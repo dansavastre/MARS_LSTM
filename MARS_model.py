@@ -19,7 +19,7 @@ import numpy as np
 import tensorflow as tf
 from sklearn import metrics
 
-from keras.optimizers import adam_v2
+from keras.optimizers import Adam
 from keras.models import Model
 from keras.models import Sequential
 from keras.layers import Dense
@@ -54,54 +54,10 @@ batch_size = 128
 epochs = 150
 
 
-
-#define the model
-def define_CNN(in_shape, n_keypoints):
-
-
-    in_one = Input(shape=in_shape)
-    conv_one_1 = Conv2D(16, kernel_size=(3, 3), activation='relu', strides=(1, 1), padding = 'same')(in_one)
-    conv_one_1 = Dropout(0.3)(conv_one_1)
-    conv_one_2 = Conv2D(32, kernel_size=(3, 3), activation='relu', strides=(1, 1), padding = 'same')(conv_one_1)
-    conv_one_2 = Dropout(0.3)(conv_one_2)
-
-    
-    conv_one_2 = BatchNormalization(momentum=0.95)(conv_one_2)
-
-
-    fe = Flatten()(conv_one_2)
-
-    # LSTM Layer
-    # Reshape the data from (batch_size, features) to (batch_size, timesteps, features)
-    reshape = Reshape((32, 64))(fe)
-    lstm_layer = LSTM(units=64, return_sequences=False)(reshape)
-
-    # dense1
-    dense_layer1 = Dense(512, activation='relu')(lstm_layer)
-    dense_layer1 = BatchNormalization(momentum=0.95)(dense_layer1)
-    # # dropout
-
-    # dropout
-    dense_layer1 = Dropout(0.4)(dense_layer1)
-    
-    out_layer = Dense(n_keypoints, activation = 'linear')(dense_layer1)
-    
-
-    # model
-    model = Model(in_one, out_layer)
-    # opt = adam_v2.Adam(lr=0.001)
-    opt = adam_v2.Adam(learning_rate=0.001)
-
-    # compile the model
-    model.compile(loss='mse', optimizer=opt, metrics=['mae', 'mse', 'mape', tf.keras.metrics.RootMeanSquaredError()])
-    return model
-
-
 def define_LSTM_CNN(input_shape, n_keypoints):
     model = Sequential()
     
-    # CNN layer
-    # model.add(Conv2D(filters=32, kernel_size=(3, 3), activation='relu', input_shape=input_shape))
+    # CNN layers
     model.add(Conv2D(filters=16, kernel_size=(3, 3), activation='relu', input_shape=input_shape))
     model.add(Dropout(0.3))
     model.add(Conv2D(filters=32, kernel_size=(3, 3), activation='relu'))
@@ -109,22 +65,22 @@ def define_LSTM_CNN(input_shape, n_keypoints):
     model.add(BatchNormalization(momentum=0.95))
     model.add(Dropout(0.4))
     
-    # Reshape output from CNN layer to fit LSTM layer
+    # Reshape output from CNN layer to fit LSTM layer input shape
     model.add(Flatten())
     model.add(Dense(57))
     model.add(Reshape((19, 3)))
     
     # LSTM layers
-    model.add(LSTM(units=57, return_sequences=False))
+    model.add(LSTM(units=15, return_sequences=False))
 
     # Fully connected layers
-    model.add(Dense(512, activation='relu'))
+    model.add(Dense(256, activation='relu'))
     
     # Output layer
     model.add(Dense(n_keypoints, activation='linear'))
     
     # compile the model
-    opt = adam_v2.Adam(lr=0.001)
+    opt = Adam(learning_rate=0.001)
     model.compile(loss='mse', optimizer=opt, metrics=['mae', 'mse', 'mape', tf.keras.metrics.RootMeanSquaredError()])
     
     return model
