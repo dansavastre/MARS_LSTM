@@ -3,8 +3,9 @@ myenv
 .venv
 
 # Ignore all files in the model folder (Output files from the model training process)
-model/
-model/Accuracy/
+models/
+models/Accuracy/
+plots/
 
 # Ignore all slurm output files
 *.out
