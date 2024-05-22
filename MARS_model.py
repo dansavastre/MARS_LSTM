@@ -53,45 +53,48 @@ paper_result_list = []
 batch_size = 128
 epochs = 150
 
+def define_CNN(in_shape, n_keypoints):
 
-def define_LSTM_CNN(input_shape, n_keypoints):
-    model = Sequential()
-    
-    # CNN layers
-    model.add(Conv2D(filters=16, kernel_size=(3, 3), activation='relu', input_shape=input_shape))
-    model.add(Dropout(0.3))
-    model.add(Conv2D(filters=32, kernel_size=(3, 3), activation='relu'))
-    model.add(Dropout(0.3))
-    model.add(BatchNormalization(momentum=0.95))
-    model.add(Dropout(0.4))
-    
-    # Reshape output from CNN layer to fit LSTM layer input shape
-    model.add(Flatten())
-    model.add(Dense(57))
-    model.add(Reshape((19, 3)))
-    
-    # LSTM layers
-    model.add(LSTM(units=15, return_sequences=False))
 
-    # Fully connected layers
-    model.add(Dense(256, activation='relu'))
+    in_one = Input(shape=in_shape)
+    conv_one_1 = Conv2D(16, kernel_size=(3, 3), activation='relu', strides=(1, 1), padding = 'same')(in_one)
+    conv_one_1 = Dropout(0.3)(conv_one_1)
+    conv_one_2 = Conv2D(32, kernel_size=(3, 3), activation='relu', strides=(1, 1), padding = 'same')(conv_one_1)
+    conv_one_2 = Dropout(0.3)(conv_one_2)
+
     
-    # Output layer
-    model.add(Dense(n_keypoints, activation='linear'))
+    conv_one_2 = BatchNormalization(momentum=0.95)(conv_one_2)
+
+
+    fe = Flatten()(conv_one_2)
+    # dense1
+    dense_layer1 = Dense(512, activation='relu')(fe)
+    dense_layer1 = BatchNormalization(momentum=0.95)(dense_layer1)
+    # # dropout
+
+    # dropout
+    dense_layer1 = Dropout(0.4)(dense_layer1)
     
-    # compile the model
+    out_layer = Dense(n_keypoints, activation = 'linear')(dense_layer1)
+    
+
+    # model
+    model = Model(in_one, out_layer)
     opt = Adam(learning_rate=0.001)
+
+    # compile the model
     model.compile(loss='mse', optimizer=opt, metrics=['mae', 'mse', 'mape', tf.keras.metrics.RootMeanSquaredError()])
-    
     return model
 
 
+if not os.path.exists('plots'):
+    os.makedirs('plots')
 
 # Repeat i iteration to get the average result
 for i in range(10):
     print('Iteration', i)
     # instantiate the model
-    keypoint_model = define_LSTM_CNN(featuremap_train[0].shape, 57)
+    keypoint_model = define_CNN(featuremap_train[0].shape, 57)
 
     # print the model summary
     # if i == 0:
@@ -118,8 +121,9 @@ for i in range(10):
     plt.ylabel('Accuracy')
     plt.xlabel('Epoch')
     plt.legend(['Train', 'Xval'], loc='upper left')
-    plt.show()
-    
+    plt.savefig(f'plots/accuracy_MARS_{i}.png')  # Save the figure with iteration number
+    plt.close()  # Close the figure
+
     # Plot loss
     plt.plot(history.history['loss'])
     plt.plot(history.history['val_loss'])
@@ -129,7 +133,9 @@ for i in range(10):
     plt.legend(['Train', 'Xval'], loc='upper left')
     plt.xlim([0,100])
     plt.ylim([0,0.1])
-    plt.show()
+    plt.savefig(f'plots/loss_MARS_{i}.png')  # Save the figure with iteration number
+    plt.close()  # Close the figure
+
     
     
 
@@ -175,14 +181,15 @@ for i in range(10):
     paper_result_list.append(paper_result_maermse)
     
     #define the output directory
-    output_direct = 'model/'
+    output_direct = 'models/'
     
     if not os.path.exists(output_direct):
         os.makedirs(output_direct)
 
     # save the best model so far
     if(score_test[1] < score_min):
-        keypoint_model.save(output_direct + 'MARS_LSTM.h5')
+        # keypoint_model.save(output_direct + 'MARS_LSTM.h5')
+        keypoint_model.save(output_direct + 'MARS.keras')
         score_min = score_test[1]
 
 
@@ -194,7 +201,7 @@ mean_paper_result_list = np.concatenate((np.mean(paper_result_list, axis = 0), m
 
 #Export the Accuracy
 output_path = output_direct + "Accuracy"
-output_filename = output_path + "/MARS_LSTM_accuracy"
+output_filename = output_path + "/MARS_accuracy"
 if not os.path.exists(output_path):
     os.makedirs(output_path)
 np.save(output_filename + ".npy", mean_paper_result_list)
