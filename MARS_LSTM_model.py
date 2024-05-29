@@ -31,6 +31,8 @@ from keras.layers import BatchNormalization
 from keras.layers import Dropout
 from keras.layers import LSTM, Reshape
 
+from utils import create_sequences
+
 # set the directory
 import os
 path = os.getcwd()
@@ -50,20 +52,14 @@ labels_test = np.load('feature/labels_test.npy')
 # Define Global Variables
 # Initialize the result array
 paper_result_list = []
-# define batch size and epochs
+base_name = 'LSTM'
+seq_length = 16
+step = 5
 batch_size = 128
 epochs = 150
-# define model name
-model_name = 'LSTM'
+n_keypoints = 57
 
 
-def create_sequence(data, labels, seq_length):
-    X, y = [], []
-    for i in range(len(data) - seq_length):
-        X.append(data[i:i + seq_length])
-        y.append(labels[i + seq_length // 2])
-    
-    return np.array(X), np.array(y)
 
 def define_LSTM_CNN(input_shape, n_keypoints):
     model = Sequential()
@@ -79,15 +75,15 @@ def define_LSTM_CNN(input_shape, n_keypoints):
     model.add(TimeDistributed(Flatten()))
     
     # LSTM layers
-    model.add(LSTM(units=128, return_sequences=False))
+    model.add(LSTM(units=128, return_sequences=True))
 
     # Fully connected layer
-    model.add(Dense(512, activation='relu'))
-    model.add(BatchNormalization(momentum=0.95))
-    model.add(Dropout(0.4))
+    model.add(TimeDistributed(Dense(512, activation='relu')))
+    model.add(TimeDistributed(BatchNormalization(momentum=0.95)))
+    model.add(TimeDistributed(Dropout(0.4)))
     
     # Output layer
-    model.add(Dense(n_keypoints, activation='linear'))
+    model.add(TimeDistributed(Dense(n_keypoints, activation='linear')))
     
     # compile the model
     opt = Adam(learning_rate=0.001)
@@ -95,15 +91,15 @@ def define_LSTM_CNN(input_shape, n_keypoints):
     
     return model
 
-
-def training_loop(model, model_name, batch_size, epochs, featuremap_train, labels_train, featuremap_validate, labels_validate, featuremap_test, labels_test):
+def training_loop(model, model_name, featuremap_train, labels_train, featuremap_validate, labels_validate, featuremap_test, labels_test, batch_size=128, epochs=150, num_iterations=10):
 
     if not os.path.exists('plots'):
         os.makedirs('plots')
 
     # Repeat i iteration to get the average result
-    for i in range(10):
+    for i in range(num_iterations):
         print('Iteration', i)
+
         # instantiate the model
         keypoint_model = model
             
@@ -113,6 +109,8 @@ def training_loop(model, model_name, batch_size, epochs, featuremap_train, label
                                     batch_size=batch_size, epochs=epochs, verbose=1, 
                                     validation_data=(featuremap_validate, labels_validate))
         
+        print(keypoint_model.summary())
+
         # save and print the metrics
         score_train = keypoint_model.evaluate(featuremap_train, labels_train,verbose = 1)
         print('train MAPE = ', score_train[3])
@@ -146,17 +144,19 @@ def training_loop(model, model_name, batch_size, epochs, featuremap_train, label
 
         
         
-
+        # For using return_sequences = True, the output is 3D, we need to reshape it to 2D
+        labels_test_reshaped = labels_test.reshape(-1, 57)
+        result_test_reshaped = result_test.reshape(-1, 57)
 
         # error for each axis
-        print("mae for x is",metrics.mean_absolute_error(labels_test[:,0:19], result_test[:,0:19]))
-        print("mae for y is",metrics.mean_absolute_error(labels_test[:,19:38], result_test[:,19:38]))
-        print("mae for z is",metrics.mean_absolute_error(labels_test[:,38:57], result_test[:,38:57]))
+        print("mae for x is",metrics.mean_absolute_error(labels_test_reshaped[:,0:19], result_test_reshaped[:,0:19]))
+        print("mae for y is",metrics.mean_absolute_error(labels_test_reshaped[:,19:38], result_test_reshaped[:,19:38]))
+        print("mae for z is",metrics.mean_absolute_error(labels_test_reshaped[:,38:57], result_test_reshaped[:,38:57]))
         
         # matrix transformation for the final all 19 points mae
-        x_mae = metrics.mean_absolute_error(labels_test[:,0:19], result_test[:,0:19], multioutput = 'raw_values')
-        y_mae = metrics.mean_absolute_error(labels_test[:,19:38], result_test[:,19:38], multioutput = 'raw_values')
-        z_mae = metrics.mean_absolute_error(labels_test[:,38:57], result_test[:,38:57], multioutput = 'raw_values')
+        x_mae = metrics.mean_absolute_error(labels_test_reshaped[:,0:19], result_test_reshaped[:,0:19], multioutput = 'raw_values')
+        y_mae = metrics.mean_absolute_error(labels_test_reshaped[:,19:38], result_test_reshaped[:,19:38], multioutput = 'raw_values')
+        z_mae = metrics.mean_absolute_error(labels_test_reshaped[:,38:57], result_test_reshaped[:,38:57], multioutput = 'raw_values')
         
         all_19_points_mae = np.concatenate((x_mae, y_mae, z_mae)).reshape(3,19)
         avg_19_points_mae = np.mean(all_19_points_mae, axis = 0)
@@ -165,9 +165,9 @@ def training_loop(model, model_name, batch_size, epochs, featuremap_train, label
         all_19_points_mae_Transpose = all_19_points_mae.T
         
         # matrix transformation for the final all 19 points rmse
-        x_rmse = metrics.mean_squared_error(labels_test[:,0:19], result_test[:,0:19], multioutput = 'raw_values', squared=False)
-        y_rmse = metrics.mean_squared_error(labels_test[:,19:38], result_test[:,19:38], multioutput = 'raw_values', squared=False)
-        z_rmse = metrics.mean_squared_error(labels_test[:,38:57], result_test[:,38:57], multioutput = 'raw_values', squared=False)
+        x_rmse = metrics.mean_squared_error(labels_test_reshaped[:,0:19], result_test_reshaped[:,0:19], multioutput = 'raw_values', squared=False)
+        y_rmse = metrics.mean_squared_error(labels_test_reshaped[:,19:38], result_test_reshaped[:,19:38], multioutput = 'raw_values', squared=False)
+        z_rmse = metrics.mean_squared_error(labels_test_reshaped[:,38:57], result_test_reshaped[:,38:57], multioutput = 'raw_values', squared=False)
         
         all_19_points_rmse = np.concatenate((x_rmse, y_rmse, z_rmse)).reshape(3,19)
         avg_19_points_rmse = np.mean(all_19_points_rmse, axis = 0)
@@ -219,11 +219,42 @@ def training_loop(model, model_name, batch_size, epochs, featuremap_train, label
 
 
 if __name__ == '__main__':
-    X_train, y_train = create_sequence(featuremap_train, labels_train, 10)
-    X_validate, y_validate = create_sequence(featuremap_validate, labels_validate, 10)
-    X_test, y_test = create_sequence(featuremap_test, labels_test, 10)
+    X_train, y_train       = create_sequences(featuremap_train, labels_train, seq_length, step=step)
+    X_validate, y_validate = create_sequences(featuremap_validate, labels_validate, seq_length, step=step)
+    X_test, y_test         = create_sequences(featuremap_test, labels_test, seq_length, step=step)
 
-    model = define_LSTM_CNN(X_train[0].shape, 57)
 
-    training_loop(model, model_name, batch_size, epochs,
-                  X_train, y_train, X_validate, y_validate, X_test, y_test)
+    # Find optimal sequence length
+    for seq_len in range(20, 32, 4):
+        model = define_LSTM_CNN(X_train[0].shape, n_keypoints)
+        model_name = f'{base_name}_{seq_len}'
+        X_train, y_train       = create_sequences(featuremap_train, labels_train, seq_len, step=step)
+        X_validate, y_validate = create_sequences(featuremap_validate, labels_validate, seq_len, step=step)
+        X_test, y_test         = create_sequences(featuremap_test, labels_test, seq_len, step=step)
+
+        training_loop(model, model_name, X_train, y_train, 
+                      X_validate, y_validate, X_test, y_test, 
+                      batch_size=batch_size, epochs=epochs, num_iterations=10)
+
+    # Find optimal LSTM dimension
+    # for lstm_dim in range(32, 256, 32):
+    #     model = define_LSTM_CNN(X_train[0].shape, n_keypoints)
+    #     model_name = f'{base_name}_{seq_length}'
+    #     print(model.layers)
+    #     model.layers[6].units = lstm_dim
+    #     training_loop(model, model_name, X_train, y_train, 
+    #                   X_validate, y_validate, X_test, y_test, 
+    #                   batch_size=batch_size, epochs=epochs, num_iterations=10)
+
+
+# [<keras.layers.rnn.time_distributed.TimeDistributed object at 0x0000021547C8BF08>, 
+#  <keras.layers.rnn.time_distributed.TimeDistributed object at 0x000002154F108EC8>, 
+#  <keras.layers.rnn.time_distributed.TimeDistributed object at 0x000002154F0ACF48>, 
+#  <keras.layers.rnn.time_distributed.TimeDistributed object at 0x000002154F0BBBC8>, 
+#  <keras.layers.rnn.time_distributed.TimeDistributed object at 0x000002154F0BEBC8>, 
+#  <keras.layers.rnn.time_distributed.TimeDistributed object at 0x000002154F0D7988>, 
+#  <keras.layers.rnn.lstm.LSTM object at 0x000002154F0D7DC8>, 
+#  <keras.layers.rnn.time_distributed.TimeDistributed object at 0x0000021550107AC8>, 
+#  <keras.layers.rnn.time_distributed.TimeDistributed object at 0x000002154F122AC8>, 
+#  <keras.layers.rnn.time_distributed.TimeDistributed object at 0x000002155011B388>, 
+#  <keras.layers.rnn.time_distributed.TimeDistributed object at 0x000002155011BAC8>]
