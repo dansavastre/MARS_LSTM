@@ -235,26 +235,3 @@ if __name__ == '__main__':
         training_loop(model, model_name, X_train, y_train, 
                       X_validate, y_validate, X_test, y_test, 
                       batch_size=batch_size, epochs=epochs, num_iterations=10)
-
-    # Find optimal LSTM dimension
-    # for lstm_dim in range(32, 256, 32):
-    #     model = define_LSTM_CNN(X_train[0].shape, n_keypoints)
-    #     model_name = f'{base_name}_{seq_length}'
-    #     print(model.layers)
-    #     model.layers[6].units = lstm_dim
-    #     training_loop(model, model_name, X_train, y_train, 
-    #                   X_validate, y_validate, X_test, y_test, 
-    #                   batch_size=batch_size, epochs=epochs, num_iterations=10)
-
-
-# [<keras.layers.rnn.time_distributed.TimeDistributed object at 0x0000021547C8BF08>, 
-#  <keras.layers.rnn.time_distributed.TimeDistributed object at 0x000002154F108EC8>, 
-#  <keras.layers.rnn.time_distributed.TimeDistributed object at 0x000002154F0ACF48>, 
-#  <keras.layers.rnn.time_distributed.TimeDistributed object at 0x000002154F0BBBC8>, 
-#  <keras.layers.rnn.time_distributed.TimeDistributed object at 0x000002154F0BEBC8>, 
-#  <keras.layers.rnn.time_distributed.TimeDistributed object at 0x000002154F0D7988>, 
-#  <keras.layers.rnn.lstm.LSTM object at 0x000002154F0D7DC8>, 
-#  <keras.layers.rnn.time_distributed.TimeDistributed object at 0x0000021550107AC8>, 
-#  <keras.layers.rnn.time_distributed.TimeDistributed object at 0x000002154F122AC8>, 
-#  <keras.layers.rnn.time_distributed.TimeDistributed object at 0x000002155011B388>, 
-#  <keras.layers.rnn.time_distributed.TimeDistributed object at 0x000002155011BAC8>]

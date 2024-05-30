@@ -51,7 +51,7 @@ paper_result_list = []
 
 # define batch size and epochs
 batch_size = 128
-epochs = 150
+epochs = 10
 
 def define_CNN(in_shape, n_keypoints):
 
@@ -91,7 +91,7 @@ if not os.path.exists('plots'):
     os.makedirs('plots')
 
 # Repeat i iteration to get the average result
-for i in range(10):
+for i in range(5):
     print('Iteration', i)
     # instantiate the model
     keypoint_model = define_CNN(featuremap_train[0].shape, 57)
