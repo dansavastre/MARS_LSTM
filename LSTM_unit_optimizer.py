@@ -37,7 +37,7 @@ X_test, y_test         = create_sequences_rsf(featuremap_test, labels_test, seq_
 
 for n_units in n_units_vals:
     model = define_LSTM(X_train[0].shape, n_keypoints, n_units)
-    model_name = f"Opt_LSTM_rsf_16_{n_units}.keras"
+    model_name = f"Opt_LSTM_rsf_16_{n_units}"
 
 
     print(f"\nTraining model {model_name}\n")

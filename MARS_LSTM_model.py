@@ -18,6 +18,7 @@ import matplotlib.pyplot as plt
 import numpy as np 
 import tensorflow as tf
 from sklearn import metrics
+import datetime
 
 from keras.optimizers import Adam
 from keras.models import Model
@@ -30,8 +31,10 @@ from keras.layers import Conv2D
 from keras.layers import BatchNormalization
 from keras.layers import Dropout
 from keras.layers import LSTM, Reshape
+from keras.callbacks import CSVLogger
 
-from utils import create_sequences
+from utils import create_sequences_rsf
+from utils import create_sequences_rst
 
 # set the directory
 import os
@@ -50,9 +53,8 @@ labels_test = np.load('feature/labels_test.npy')
 
 
 # Define Global Variables
-# Initialize the result array
 paper_result_list = []
-base_name = 'LSTM'
+base_name = 'AST_LSTM_rsf'
 seq_length = 16
 step = 5
 batch_size = 128
@@ -63,28 +65,29 @@ n_keypoints = 57
 
 def define_LSTM_CNN(input_shape, n_keypoints):
     model = Sequential()
+
+    # Define the input layer
+    model.add(Input(shape=input_shape))
     
     # CNN layers
     model.add(TimeDistributed(Conv2D(filters=16, kernel_size=(3, 3), activation='relu', input_shape=input_shape)))
-    model.add(TimeDistributed(Dropout(0.3)))
+    model.add(Dropout(0.3))
     model.add(TimeDistributed(Conv2D(filters=32, kernel_size=(3, 3), activation='relu')))
-    model.add(TimeDistributed(Dropout(0.3)))
-    model.add(TimeDistributed(BatchNormalization(momentum=0.95)))
+    model.add(Dropout(0.3))
+    model.add(BatchNormalization(momentum=0.95))
     
-    # Reshape output from CNN layer to fit LSTM layer input shape
     model.add(TimeDistributed(Flatten()))
-    
-    # LSTM layers
-    model.add(LSTM(units=128, return_sequences=True))
-
-    # Fully connected layer
     model.add(TimeDistributed(Dense(512, activation='relu')))
-    model.add(TimeDistributed(BatchNormalization(momentum=0.95)))
-    model.add(TimeDistributed(Dropout(0.4)))
+
+    model.add(BatchNormalization(momentum=0.95))
+    model.add(Dropout(0.4))
     
+    # LSTM layer
+    model.add(LSTM(units=n_keypoints, return_sequences=False))
+
     # Output layer
-    model.add(TimeDistributed(Dense(n_keypoints, activation='linear')))
-    
+    model.add(Dense(n_keypoints, activation='linear'))
+
     # compile the model
     opt = Adam(learning_rate=0.001)
     model.compile(loss='mse', optimizer=opt, metrics=['mae', 'mse', 'mape', tf.keras.metrics.RootMeanSquaredError()])
@@ -92,9 +95,11 @@ def define_LSTM_CNN(input_shape, n_keypoints):
     return model
 
 def training_loop(model, model_name, featuremap_train, labels_train, featuremap_validate, labels_validate, featuremap_test, labels_test, batch_size=128, epochs=150, num_iterations=10):
-
     if not os.path.exists('plots'):
         os.makedirs('plots')
+    
+    log_dir = "logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+    tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
 
     # Repeat i iteration to get the average result
     for i in range(num_iterations):
@@ -105,9 +110,11 @@ def training_loop(model, model_name, featuremap_train, labels_train, featuremap_
             
         # initial maximum error 
         score_min = 10
+        csv_logger = CSVLogger(f'logs/{model_name}_tain.log')
         history = keypoint_model.fit(featuremap_train, labels_train,
                                     batch_size=batch_size, epochs=epochs, verbose=1, 
-                                    validation_data=(featuremap_validate, labels_validate))
+                                    validation_data=(featuremap_validate, labels_validate),
+                                    callbacks=[tensorboard_callback, csv_logger])
         
         print(keypoint_model.summary())
 
@@ -117,30 +124,32 @@ def training_loop(model, model_name, featuremap_train, labels_train, featuremap_
 
         score_test = keypoint_model.evaluate(featuremap_test, labels_test,verbose = 1)
         print('test MAPE = ', score_test[3])
+
+        print('Score for test:', score_test)
         
         result_test = keypoint_model.predict(featuremap_test)
 
-        # Plot accuracy
-        plt.plot(history.history['mae'])
-        plt.plot(history.history['val_mae'])
-        plt.title('Model accuracy')
-        plt.ylabel('Accuracy')
-        plt.xlabel('Epoch')
-        plt.legend(['Train', 'Xval'], loc='upper left')
-        plt.savefig(f'plots/accuracy_{model_name}_{i}.png')  # Save the figure with iteration number
-        plt.close()  # Close the figure
+        # # Plot accuracy
+        # plt.plot(history.history['mae'])
+        # plt.plot(history.history['val_mae'])
+        # plt.title('Model accuracy')
+        # plt.ylabel('Accuracy')
+        # plt.xlabel('Epoch')
+        # plt.legend(['Train', 'Xval'], loc='upper left')
+        # plt.savefig(f'plots/accuracy_{model_name}_{i}.png')  # Save the figure with iteration number
+        # plt.close()  # Close the figure
 
-        # Plot loss
-        plt.plot(history.history['loss'])
-        plt.plot(history.history['val_loss'])
-        plt.title('Model loss')
-        plt.ylabel('Loss')
-        plt.xlabel('Epoch')
-        plt.legend(['Train', 'Xval'], loc='upper left')
-        plt.xlim([0,100])
-        plt.ylim([0,0.1])
-        plt.savefig(f'plots/loss_{model_name}_{i}.png')  # Save the figure with iteration number
-        plt.close()  # Close the figure
+        # # Plot loss
+        # plt.plot(history.history['loss'])
+        # plt.plot(history.history['val_loss'])
+        # plt.title('Model loss')
+        # plt.ylabel('Loss')
+        # plt.xlabel('Epoch')
+        # plt.legend(['Train', 'Xval'], loc='upper left')
+        # plt.xlim([0,100])
+        # plt.ylim([0,0.1])
+        # plt.savefig(f'plots/loss_{model_name}_{i}.png')  # Save the figure with iteration number
+        # plt.close()  # Close the figure
 
         
         
@@ -218,20 +227,30 @@ def training_loop(model, model_name, featuremap_train, labels_train, featuremap_
     plt.show()
 
 
+
 if __name__ == '__main__':
-    X_train, y_train       = create_sequences(featuremap_train, labels_train, seq_length, step=step)
-    X_validate, y_validate = create_sequences(featuremap_validate, labels_validate, seq_length, step=step)
-    X_test, y_test         = create_sequences(featuremap_test, labels_test, seq_length, step=step)
+    
+    for i in range(10):
 
+        # Load Asterios dataset
+        featuremap_train = np.load(f"Asterios Dataset/mmWave/{i}/training_mmWave.npy")
+        featuremap_validate = np.load(f"Asterios Dataset/mmWave/{i}/validate_mmWave.npy")
+        featuremap_test = np.load(f"Asterios Dataset/mmWave/{i}/testing_mmWave.npy")
 
-    # Find optimal sequence length
-    for seq_len in range(20, 32, 4):
+        labels_train = np.load(f"Asterios Dataset/kinect/{i}/training_labels.npy")
+        labels_validate = np.load(f"Asterios Dataset/kinect/{i}/validate_labels.npy")
+        labels_test = np.load(f"Asterios Dataset/kinect/{i}/testing_labels.npy")
+
+        # Create sequences
+        X_train, y_train       = create_sequences_rsf(featuremap_train, labels_train, seq_length, step=step)
+        X_validate, y_validate = create_sequences_rsf(featuremap_validate, labels_validate, seq_length, step=step)
+        X_test, y_test         = create_sequences_rsf(featuremap_test, labels_test, seq_length, step=step)
+
+        # Define the model
         model = define_LSTM_CNN(X_train[0].shape, n_keypoints)
-        model_name = f'{base_name}_{seq_len}'
-        X_train, y_train       = create_sequences(featuremap_train, labels_train, seq_len, step=step)
-        X_validate, y_validate = create_sequences(featuremap_validate, labels_validate, seq_len, step=step)
-        X_test, y_test         = create_sequences(featuremap_test, labels_test, seq_len, step=step)
+        model_name = base_name + '_' + str(seq_length)
 
+        # Train the model
         training_loop(model, model_name, X_train, y_train, 
-                      X_validate, y_validate, X_test, y_test, 
-                      batch_size=batch_size, epochs=epochs, num_iterations=10)
+                    X_validate, y_validate, X_test, y_test, 
+                    batch_size=batch_size, epochs=epochs, num_iterations=10)

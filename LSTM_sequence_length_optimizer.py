@@ -38,7 +38,7 @@ for seq_length in [32, 57, 64, 128, 256]:
     X_test, y_test         = create_sequences_rsf(featuremap_test, labels_test, seq_length, step=step)
 
     model = define_LSTM(X_train[0].shape, n_keypoints, n_units)
-    model_name = f"Opt_LSTM_rsf_{seq_length}_57.keras"
+    model_name = f"Opt_LSTM_rsf_{seq_length}_57"
 
 
     print(f"\nTraining model {model_name}\n")
