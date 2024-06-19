@@ -3,7 +3,7 @@ from sklearn import metrics
 import matplotlib.pyplot as plt
 import tensorflow as tf
 import os
-from tensorflow.keras.models import Sequential
+from tensorflow.keras.models import Sequential, Model
 from tensorflow.keras.layers import Input, Conv2D, TimeDistributed, LSTM, Dense, Flatten, Dropout, BatchNormalization
 from tensorflow.keras.optimizers import Adam
 
@@ -70,6 +70,39 @@ def calculate_accuracy(y, predictions):
     return results
 
 
+def define_CNN(in_shape, n_keypoints):
+
+
+    in_one = Input(shape=in_shape)
+    conv_one_1 = Conv2D(16, kernel_size=(3, 3), activation='relu', strides=(1, 1), padding = 'same')(in_one)
+    conv_one_1 = Dropout(0.3)(conv_one_1)
+    conv_one_2 = Conv2D(32, kernel_size=(3, 3), activation='relu', strides=(1, 1), padding = 'same')(conv_one_1)
+    conv_one_2 = Dropout(0.3)(conv_one_2)
+
+    
+    conv_one_2 = BatchNormalization(momentum=0.95)(conv_one_2)
+
+
+    fe = Flatten()(conv_one_2)
+    # dense1
+    dense_layer1 = Dense(512, activation='relu')(fe)
+    dense_layer1 = BatchNormalization(momentum=0.95)(dense_layer1)
+    # # dropout
+
+    # dropout
+    dense_layer1 = Dropout(0.4)(dense_layer1)
+    
+    out_layer = Dense(n_keypoints, activation = 'linear')(dense_layer1)
+    
+
+    # model
+    model = Model(in_one, out_layer)
+    opt = Adam(learning_rate=0.001)
+
+    # compile the model
+    model.compile(loss='mse', optimizer=opt, metrics=['mae', 'mse', 'mape', tf.keras.metrics.RootMeanSquaredError()])
+    return model
+
 
 def define_LSTM(input_shape, n_keypoints, n_units):
     model = Sequential()
@@ -93,6 +126,9 @@ def define_LSTM(input_shape, n_keypoints, n_units):
     # LSTM layer
     model.add(LSTM(units=n_units, return_sequences=False))
 
+    # Fully connected layer
+    model.add(Dense(128, activation='relu'))
+
     # Output layer
     model.add(Dense(n_keypoints, activation='linear'))
 
@@ -110,6 +146,31 @@ def training_loop(model, model_name, featuremap_train, labels_train, featuremap_
     # Repeat i iteration to get the average result
     for i in range(n_iterations):
         print('Iteration', i)
+
+        # Load Moving Target dataset
+        featuremap_train = np.load(f'Asterios Dataset/mmWave/{i}/training_mmWave.npy')
+        featuremap_validate = np.load(f'Asterios Dataset/mmWave/{i}/validate_mmWave.npy')
+        featuremap_test = np.load(f'Asterios Dataset/mmWave/{i}/testing_mmWave.npy')
+
+        labels_train = np.load(f'Asterios Dataset/kinect/{i}/training_labels.npy')
+        labels_validate = np.load(f'Asterios Dataset/kinect/{i}/validate_labels.npy')
+        labels_test = np.load(f'Asterios Dataset/kinect/{i}/testing_labels.npy')
+
+        # # Create sequences
+        # X_train, y_train       = create_sequences_rsf(featuremap_train, labels_train, 16, step=5)
+        # X_validate, y_validate = create_sequences_rsf(featuremap_validate, labels_validate, 16, step=5)
+        # X_test, y_test         = create_sequences_rsf(featuremap_test, labels_test, 16, step=5)
+
+
+
+        # # Remap the data
+        # featuremap_train = X_train
+        # labels_train = y_train
+        # featuremap_validate = X_validate
+        # labels_validate = y_validate
+        # featuremap_test = X_test
+        # labels_test = y_test
+
 
         # instantiate the model
         keypoint_model = model
@@ -205,3 +266,4 @@ def training_loop(model, model_name, featuremap_train, labels_train, featuremap_
         os.makedirs(output_path)
     np.save(output_filename + ".npy", mean_paper_result_list)
     np.savetxt(output_filename + ".txt", mean_paper_result_list,fmt='%.2f')
+
