@@ -127,7 +127,7 @@ def define_LSTM(input_shape, n_keypoints, n_units):
     model.add(LSTM(units=n_units, return_sequences=False))
 
     # Fully connected layer
-    model.add(Dense(128, activation='relu'))
+    # model.add(Dense(128, activation='relu'))
 
     # Output layer
     model.add(Dense(n_keypoints, activation='linear'))
@@ -147,31 +147,6 @@ def training_loop(model, model_name, featuremap_train, labels_train, featuremap_
     for i in range(n_iterations):
         print('Iteration', i)
 
-        # Load Moving Target dataset
-        featuremap_train = np.load(f'Asterios Dataset/mmWave/{i}/training_mmWave.npy')
-        featuremap_validate = np.load(f'Asterios Dataset/mmWave/{i}/validate_mmWave.npy')
-        featuremap_test = np.load(f'Asterios Dataset/mmWave/{i}/testing_mmWave.npy')
-
-        labels_train = np.load(f'Asterios Dataset/kinect/{i}/training_labels.npy')
-        labels_validate = np.load(f'Asterios Dataset/kinect/{i}/validate_labels.npy')
-        labels_test = np.load(f'Asterios Dataset/kinect/{i}/testing_labels.npy')
-
-        # # Create sequences
-        # X_train, y_train       = create_sequences_rsf(featuremap_train, labels_train, 16, step=5)
-        # X_validate, y_validate = create_sequences_rsf(featuremap_validate, labels_validate, 16, step=5)
-        # X_test, y_test         = create_sequences_rsf(featuremap_test, labels_test, 16, step=5)
-
-
-
-        # # Remap the data
-        # featuremap_train = X_train
-        # labels_train = y_train
-        # featuremap_validate = X_validate
-        # labels_validate = y_validate
-        # featuremap_test = X_test
-        # labels_test = y_test
-
-
         # instantiate the model
         keypoint_model = model
             
@@ -182,10 +157,7 @@ def training_loop(model, model_name, featuremap_train, labels_train, featuremap_
         history = keypoint_model.fit(featuremap_train, labels_train,
                                     batch_size=batch_size, epochs=epochs, verbose=1, 
                                     validation_data=(featuremap_validate, labels_validate))
-                                    # callbacks=[tensorboard_callback, csv_logger])
         
-        print(keypoint_model.summary())
-
         # save and print the metrics
         score_train = keypoint_model.evaluate(featuremap_train, labels_train,verbose = 1)
         print('train MAPE = ', score_train[3])
