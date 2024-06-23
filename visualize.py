@@ -1,6 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import tensorflow as tf
+from utils import create_sequences_rsf
+from utils import create_sequences_rst
 
 connections = [
     (0, 1),  # SpineBase to SpineMid
@@ -74,16 +76,22 @@ def plot_skeleton(reshaped_data, ax, color_default=True):
 fig = plt.figure()
 ax = fig.add_subplot(111, projection="3d")
 
-# Load MARS model
-model = tf.keras.models.load_model("model/MARS_LSTM_2.h5")
+# Load LSTM model
+model = tf.keras.models.load_model("models/AST_Temporal.keras")
 
 # Add your own path of the testing data and labels
-# featuremap_test = np.load("../mmWave_MSc/dataset/formatted/mmWave/testing_mmWave.npy")
-# ground_truth = np.load("../mmWave_MSc/dataset/formatted/kinect/testing_labels.npy")
-featuremap_test = np.load("feature/featuremap_test.npy")
-ground_truth = np.load("feature/labels_test.npy")
+# featuremap_test = np.load("feature/featuremap_test.npy")
+# ground_truth = np.load("feature/labels_test.npy") 
+featuremap_test = np.load("Asterios Dataset/mmWave/0/validate_mmWave.npy")
+ground_truth = np.load("Asterios Dataset/kinect/0/validate_labels.npy")
 
-predictions = model.predict(featuremap_test)
+X, y = create_sequences_rsf(featuremap_test, ground_truth, 16, step=1)
+
+predictions = model.predict(X)
+
+# Reshape the predictions and ground truth to match the skeleton plotting function
+predictions = predictions.reshape(-1, 57)
+y = y.reshape(-1, 57)
 
 for predict_num, prediction in enumerate(predictions):
     ax.clear()  # Clear the plot before each iteration
@@ -93,7 +101,7 @@ for predict_num, prediction in enumerate(predictions):
     plot_skeleton(reshaped_data, ax)
 
     # GROUND TRUTH (in grey)
-    reshaped_ground_truth = ground_truth[predict_num].reshape(3, -1)
+    reshaped_ground_truth = y[predict_num].reshape(3, -1)
     plot_skeleton(reshaped_ground_truth, ax, False)
 
     # Set fixed axis scales
